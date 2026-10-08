@@ -98,7 +98,8 @@ const av=(el,n)=>{el.textContent=n[0].toUpperCase();el.style.background=COLORS[[
 let stream,facing="user",views,start,timers=[];
 async function cam(){
   if(stream)stream.getTracks().forEach(t=>t.stop());
-  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:1920}},audio:false});
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,aspectRatio:{ideal:innerWidth/innerHeight},width:{ideal:1080},height:{ideal:1920}},audio:false});
+  try{const t=stream.getVideoTracks()[0],c=t.getCapabilities?.();if(c&&c.zoom)await t.applyConstraints({advanced:[{zoom:c.zoom.min}]})}catch(e){}
   $("v").srcObject=stream;$("v").classList.toggle("front",facing==="user");
 }
 const D=()=>DATA[S.lang]||DATA.fr;
