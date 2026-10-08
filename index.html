@@ -11,7 +11,8 @@
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 html,body{margin:0;height:100%;background:#000;color:#fff;font-family:-apple-system,system-ui,Roboto,sans-serif;overflow:hidden}
-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#111}
+video{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+video.fill{object-fit:cover}
 video.front{transform:scaleX(-1)}
 #ui{position:fixed;inset:0;display:none;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
 #ui::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(#0007,transparent 18%,transparent 55%,#0009)}
@@ -73,6 +74,7 @@ video.front{transform:scaleX(-1)}
   <label>Pseudo<input id="sName"></label>
   <label>Spectateurs visés<input id="sViews" type="number" min="10" step="100"></label>
   <label>Vitesse des commentaires<select id="sSpeed"><option value="1.6">Lente</option><option value="1">Normale</option><option value="0.5">Rapide</option></select></label>
+  <label>Cadrage caméra<select id="sFit"><option value="contain">Image entière (sans zoom)</option><option value="cover">Plein écran (rogné)</option></select></label>
   <label>Langue<select id="sLang"><option value="fr">Français</option><option value="en">English</option></select></label>
   <label>Commentaires perso (un par ligne)<textarea id="sCustom" rows="3"></textarea></label>
   <button id="sSave">Enregistrer</button>
@@ -80,7 +82,7 @@ video.front{transform:scaleX(-1)}
 <script>
 const $=id=>document.getElementById(id);
 const rnd=(a,b)=>a+Math.random()*(b-a), pick=a=>a[Math.floor(Math.random()*a.length)];
-const DEF={name:"moi",views:19600,speed:1,lang:"fr",custom:""};
+const DEF={fit:"contain",name:"moi",views:19600,speed:1,lang:"fr",custom:""};
 let S=Object.assign({},DEF);
 try{Object.assign(S,JSON.parse(localStorage.getItem("lf")||"{}"))}catch(e){}
 const save=()=>{try{localStorage.setItem("lf",JSON.stringify(S))}catch(e){}};
@@ -98,10 +100,11 @@ const av=(el,n)=>{el.textContent=n[0].toUpperCase();el.style.background=COLORS[[
 let stream,facing="user",views,start,timers=[];
 async function cam(){
   if(stream)stream.getTracks().forEach(t=>t.stop());
-  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,aspectRatio:{ideal:innerWidth/innerHeight},width:{ideal:1080},height:{ideal:1920}},audio:false});
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}},audio:false});
   try{const t=stream.getVideoTracks()[0],c=t.getCapabilities?.();if(c&&c.zoom)await t.applyConstraints({advanced:[{zoom:c.zoom.min}]})}catch(e){}
-  $("v").srcObject=stream;$("v").classList.toggle("front",facing==="user");
+  $("v").srcObject=stream;$("v").classList.toggle("front",facing==="user");applyFit();
 }
+const applyFit=()=>$("v").classList.toggle("fill",S.fit==="cover");
 const D=()=>DATA[S.lang]||DATA.fr;
 
 function addMsg(name,text,gift){
@@ -166,11 +169,11 @@ ui.addEventListener("touchstart",()=>{lp=setTimeout(openSet,700)},{passive:true}
 ["touchend","touchmove","touchcancel"].forEach(ev=>ui.addEventListener(ev,()=>clearTimeout(lp),{passive:true}));
 function openSet(){
   $("sName").value=S.name;$("sViews").value=S.views;$("sSpeed").value=String(S.speed);
-  $("sLang").value=S.lang;$("sCustom").value=S.custom;$("set").style.display="flex";
+  $("sLang").value=S.lang;$("sFit").value=S.fit;$("sCustom").value=S.custom;$("set").style.display="flex";
 }
 $("sSave").onclick=()=>{
   S.name=$("sName").value||"moi";S.views=+$("sViews").value||DEF.views;S.speed=+$("sSpeed").value;
-  S.lang=$("sLang").value;S.custom=$("sCustom").value;save();
+  S.lang=$("sLang").value;S.fit=$("sFit").value;applyFit();S.custom=$("sCustom").value;save();
   $("mename").textContent=S.name;av($("meav"),S.name);$("set").style.display="none";
 };
 </script>
