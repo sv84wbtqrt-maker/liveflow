@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<title>LiveFlow</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:-apple-system,system-ui,Roboto,sans-serif;overflow:hidden}
+video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#111}
+video.front{transform:scaleX(-1)}
+#ui{position:fixed;inset:0;display:none;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
+#ui::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(#0007,transparent 18%,transparent 55%,#0009)}
+#ui>*{position:relative}
+#top{display:flex;align-items:center;gap:8px;margin-top:10px}
+.pill{background:#0006;border-radius:20px;padding:5px 10px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+#me{padding:3px 12px 3px 3px}
+.av{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none}
+#live{background:#fe2c55;border-radius:5px;padding:3px 7px;font-size:12px;font-weight:800}
+#views{margin-left:auto}
+#close{font-size:22px;padding:0 6px;opacity:.9}
+#joins{margin-top:8px;font-size:13px;min-height:22px;opacity:.9}
+#chat{position:absolute;left:12px;right:80px;bottom:calc(env(safe-area-inset-bottom) + 70px);height:36%;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}
+.msg{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.25;animation:in .25s ease-out}
+.msg .av{width:28px;height:28px;font-size:12px}
+.msg b{color:#ffffffb0;font-weight:600;display:block;font-size:12px}
+.msg.gift span{color:#ffd54a;font-weight:700}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+#bottom{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);display:flex;gap:10px;align-items:center}
+#fake{flex:1;background:#0006;border-radius:22px;padding:11px 16px;font-size:14px;opacity:.85}
+.btn{width:42px;height:42px;border-radius:50%;background:#0006;display:flex;align-items:center;justify-content:center;font-size:20px}
+#hearts{position:absolute;right:0;bottom:70px;width:90px;height:50%;pointer-events:none;overflow:hidden}
+.h{position:absolute;bottom:0;font-size:26px;animation:fly 2.6s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--x),-420px) scale(1.3);opacity:0}}
+#start{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:30px}
+#start h1{margin:0;font-size:34px}
+#start button{background:#fe2c55;color:#fff;border:0;border-radius:30px;padding:15px 40px;font-size:18px;font-weight:700}
+#start p{opacity:.6;font-size:13px;max-width:300px}
+#set{position:fixed;inset:auto 0 0 0;background:#1c1c1e;padding:18px 18px calc(env(safe-area-inset-bottom) + 18px);border-radius:18px 18px 0 0;display:none;z-index:9;gap:12px;flex-direction:column}
+#set label{font-size:13px;display:flex;flex-direction:column;gap:4px;opacity:.9}
+#set input,#set select,#set textarea,#set button{font-size:16px;padding:9px;border-radius:8px;border:0;background:#333;color:#fff}
+#set button{background:#fe2c55;font-weight:700}
+</style>
+</head>
+<body>
+<video id="v" playsinline muted autoplay></video>
+<div id="ui">
+  <div id="top">
+    <div class="pill" id="me"><span class="av" id="meav"></span><span id="mename"></span></div>
+    <div id="live">LIVE</div><div class="pill" id="timer">00:00</div>
+    <div class="pill" id="views">👁 <span id="vn">0</span></div>
+    <div id="close">✕</div>
+  </div>
+  <div id="joins"></div>
+  <div id="chat"></div>
+  <div id="hearts"></div>
+  <div id="bottom">
+    <div id="fake">Dis quelque chose…</div>
+    <div class="btn" id="flip">🔄</div>
+    <div class="btn" id="likebtn">❤️</div>
+  </div>
+</div>
+<div id="start">
+  <h1>LiveFlow</h1>
+  <button id="go">Démarrer le live</button>
+  <p>Appui long sur l'écran pendant le live pour ouvrir les réglages.</p>
+</div>
+<div id="set">
+  <label>Pseudo<input id="sName"></label>
+  <label>Spectateurs visés<input id="sViews" type="number" min="10" step="100"></label>
+  <label>Vitesse des commentaires<select id="sSpeed"><option value="1.6">Lente</option><option value="1">Normale</option><option value="0.5">Rapide</option></select></label>
+  <label>Langue<select id="sLang"><option value="fr">Français</option><option value="en">English</option></select></label>
+  <label>Commentaires perso (un par ligne)<textarea id="sCustom" rows="3"></textarea></label>
+  <button id="sSave">Enregistrer</button>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a), pick=a=>a[Math.floor(Math.random()*a.length)];
+const DEF={name:"moi",views:19600,speed:1,lang:"fr",custom:""};
+let S=Object.assign({},DEF);
+try{Object.assign(S,JSON.parse(localStorage.getItem("lf")||"{}"))}catch(e){}
+const save=()=>{try{localStorage.setItem("lf",JSON.stringify(S))}catch(e){}};
+
+const DATA={
+fr:{names:["lea_music","tomtom77","camille.b","xX_gaby_Xx","lina.off","mathis_92","sarah.m","kevin.fr","jade_x","noah.gg","manon_lvl","ines.ptt","dylan.07","chloe.official","lucas_bzh","emma.rose","yanis.k","zoe_vibes","hugo.des","clara_ldn"],
+msgs:["salut tout le monde 👋","trop fort le live 🔥","bonsoir !!","c'est qui qui est là depuis le début ?","on t'adore ❤️","pose ta question à la communauté","tu peux dire mon prénom ?","🔥🔥🔥","wow 20k 😳","haha trop drôle 😂😂","vous êtes combien à regarder ?","abonné direct","salut de Marseille !","salut de Belgique 🇧🇪","l'ambiance 😍","le son est nickel","on ne lâche rien 💪","j'adore ta vibe","mdrrr","t'es trop beau/belle","qui est là en 2024 ?","ça lag pas chez moi","❤️❤️❤️","fais un shoutout stp","partage le live !!","incroyable 🙌","c'est le meilleur live","je suis en retard ?","💀💀💀","faut que tu fasses ça plus souvent"],
+join:"a rejoint le live",gift:"a envoyé une rose 🌹"},
+en:{names:["jake_official","mia.rose","tyler99","ash_vibes","liam.k","sophie_lx","noah.gg","emma.b","ryan_777","zoe.daily","chris.m","ella_xo","dan.live","kayla.j","omar_k","lucy.fx"],
+msgs:["hiii everyone 👋","this live is fire 🔥","hello from London!","who's here from the start?","love you ❤️","say my name pls","🔥🔥🔥","20k wow 😳","lmaooo 😂😂","how many of you are watching?","just followed","greetings from Texas","vibes are immaculate 😍","sound is perfect","keep going 💪","omg 🙌","💀💀💀","shoutout please!","sharing this live","best live ever","am I late?","❤️❤️❤️"],
+join:"joined the live",gift:"sent a rose 🌹"}};
+const COLORS=["#fe2c55","#25f4ee","#ffb300","#7e57c2","#26a69a","#ef6c00","#42a5f5","#ec407a"];
+const av=(el,n)=>{el.textContent=n[0].toUpperCase();el.style.background=COLORS[[...n].reduce((a,c)=>a+c.charCodeAt(0),0)%COLORS.length]};
+
+let stream,facing="user",views,start,timers=[];
+async function cam(){
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:1920}},audio:false});
+  $("v").srcObject=stream;$("v").classList.toggle("front",facing==="user");
+}
+const D=()=>DATA[S.lang]||DATA.fr;
+
+function addMsg(name,text,gift){
+  const c=$("chat"),m=document.createElement("div");m.className="msg"+(gift?" gift":"");
+  const a=document.createElement("span");a.className="av";av(a,name);
+  const t=document.createElement("div");const b=document.createElement("b");b.textContent=name;
+  const s=document.createElement("span");s.textContent=text;t.append(b,s);m.append(a,t);c.append(m);
+  while(c.children.length>14)c.firstChild.remove();
+}
+function chatLoop(){
+  const custom=S.custom.split("\n").map(s=>s.trim()).filter(Boolean);
+  const burst=Math.random()<.08?Math.floor(rnd(3,7)):1;
+  for(let i=0;i<burst;i++)setTimeout(()=>{
+    if(Math.random()<.04)addMsg(pick(D().names),D().gift,true);
+    else addMsg(pick(D().names)+(Math.random()<.3?Math.floor(rnd(1,99)):""),custom.length&&Math.random()<.25?pick(custom):pick(D().msgs));
+  },i*rnd(80,250));
+  timers.push(setTimeout(chatLoop,rnd(350,1800)*S.speed));
+}
+function joinLoop(){
+  const j=$("joins");j.textContent="👋 "+pick(D().names)+" "+D().join;
+  j.style.opacity=1;setTimeout(()=>j.style.opacity=0,2500);
+  timers.push(setTimeout(joinLoop,rnd(3000,7000)));
+}
+function viewLoop(){
+  const target=S.views;
+  views+=(target-views)*.08+rnd(-45,45)+(Math.random()<.03?rnd(-250,250):0);
+  $("vn").textContent=Math.round(views).toLocaleString("fr-FR").replace(/ | /g," ");
+  timers.push(setTimeout(viewLoop,rnd(900,2200)));
+}
+function heart(){
+  const h=document.createElement("div");h.className="h";h.textContent=pick(["❤️","❤️","💖","🧡","💜","🔥"]);
+  h.style.right=rnd(0,40)+"px";h.style.setProperty("--x",rnd(-30,30)+"px");
+  $("hearts").append(h);setTimeout(()=>h.remove(),2700);
+}
+function heartLoop(){heart();timers.push(setTimeout(heartLoop,rnd(150,700)))}
+function tick(){
+  const s=Math.floor((Date.now()-start)/1000),p=n=>String(n).padStart(2,"0");
+  $("timer").textContent=(s>=3600?p(Math.floor(s/3600))+":":"")+p(Math.floor(s/60)%60)+":"+p(s%60);
+}
+async function run(){
+  try{await cam()}catch(e){alert("Impossible d'accéder à la caméra : "+e.message);return}
+  $("start").style.display="none";$("ui").style.display="block";
+  $("mename").textContent=S.name;av($("meav"),S.name||"m");
+  views=S.views*.15;start=Date.now();$("chat").innerHTML="";
+  timers.push(setInterval(tick,1000));viewLoop();chatLoop();joinLoop();heartLoop();
+  try{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.()}catch(e){}
+}
+function stop(){
+  timers.forEach(t=>{clearTimeout(t);clearInterval(t)});timers=[];
+  stream&&stream.getTracks().forEach(t=>t.stop());
+  $("ui").style.display="none";$("start").style.display="flex";
+}
+$("go").onclick=run;
+$("close").onclick=stop;
+$("flip").onclick=async()=>{facing=facing==="user"?"environment":"user";try{await cam()}catch(e){}};
+$("likebtn").onclick=()=>{for(let i=0;i<5;i++)setTimeout(heart,i*70)};
+$("ui").addEventListener("click",e=>{if(e.target.closest(".btn,#close"))return;for(let i=0;i<3;i++)setTimeout(heart,i*60)});
+
+// réglages : appui long
+let lp;const ui=$("ui");
+ui.addEventListener("touchstart",()=>{lp=setTimeout(openSet,700)},{passive:true});
+["touchend","touchmove","touchcancel"].forEach(ev=>ui.addEventListener(ev,()=>clearTimeout(lp),{passive:true}));
+function openSet(){
+  $("sName").value=S.name;$("sViews").value=S.views;$("sSpeed").value=String(S.speed);
+  $("sLang").value=S.lang;$("sCustom").value=S.custom;$("set").style.display="flex";
+}
+$("sSave").onclick=()=>{
+  S.name=$("sName").value||"moi";S.views=+$("sViews").value||DEF.views;S.speed=+$("sSpeed").value;
+  S.lang=$("sLang").value;S.custom=$("sCustom").value;save();
+  $("mename").textContent=S.name;av($("meav"),S.name);$("set").style.display="none";
+};
+</script>
+</body>
+</html>
